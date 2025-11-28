@@ -9,7 +9,7 @@
 # default ollama time to keep the server alive
 (( ! ${+KOLLZSH_KEEP_ALIVE} )) && typeset -g KOLLZSH_KEEP_ALIVE='1h'
 # default python3 path
-(( ! ${+KOLLZSH_PYTHON3} )) && typeset -g KOLLZSH_PYTHON3='python3'
+(( ! ${+KOLLZSH_PYTHON3} )) && typeset -g KOLLZSH_PYTHON3='/home/hadrien/.local/share/pipx/shared/bin/python3'
 
 # Source utility functions
 source "${0:A:h}/utils.zsh"
@@ -35,17 +35,17 @@ validate_required() {
   check_command "jq" || return 1
   check_command "fzf" || return 1
   check_command "curl" || return 1
-  check_command $KOLLZSH_PYTHON3 || return 1
+ # check_command $KOLLZSH_PYTHON3 || return 1
   
   # Check if Ollama is running
-  check_ollama_running || return 1
+ # check_ollama_running || return 1
   
   # Check if the specified model exists
-  if ! curl -s "${KOLLZSH_URL}/api/tags" | grep -q $KOLLZSH_MODEL; then
-    echo "🚨 Model ${KOLLZSH_MODEL} not found!"
-    echo "Please pull it with: ollama pull ${KOLLZSH_MODEL}"
-    return 1
-  fi
+  #if ! curl -s "${KOLLZSH_URL}/api/tags" | grep -q $KOLLZSH_MODEL; then
+  #  echo "🚨 Model ${KOLLZSH_MODEL} not found!"
+  #  echo "Please pull it with: ollama pull ${KOLLZSH_MODEL}"
+  #  return 1
+  #fi
 }
 
 fzf_kollzsh() {
@@ -70,10 +70,29 @@ fzf_kollzsh() {
   export KOLLZSH_COMMAND_COUNT
   export KOLLZSH_MODEL
   export KOLLZSH_KEEP_ALIVE
+  export OPENAI_API_KEY
+  export OPENAI_API_KEY
 
   # Get absolute path to the script directory
   PLUGIN_DIR=${${(%):-%x}:A:h}
-  KOLLZSH_COMMANDS=$( "$KOLLZSH_PYTHON3" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+  
+  # Try uvx first, then pipx, then system python
+  if command -v uvx &> /dev/null; then
+    KOLLZSH_COMMANDS=$( "uvx" "--with" "ollama" "python" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+  elif command -v pipx &> /dev/null; then
+    KOLLZSH_COMMANDS=$( "pipx" "run" "--with" "ollama" "python" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+  elif command -v python3 &> /dev/null; then
+    # Check if ollama module is available
+    if python3 -c "import ollama" 2>/dev/null; then
+      KOLLZSH_COMMANDS=$( "python3" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+    else
+      echo "🚨 ollama module not found! Install it with: pip install ollama"
+      return 0
+    fi
+  else
+    echo "🚨 No python interpreter found! Please install python3, uvx, or pipx"
+    return 0
+  fi
   
   # Check if the command was successful and that the commands is an array
   if [ $? -ne 0 ] || [ -z "$KOLLZSH_COMMANDS" ]; then

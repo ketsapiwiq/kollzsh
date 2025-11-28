@@ -59,7 +59,7 @@ check_command() {
 }
 
 # Function to check if Ollama is running
-check_ollama_running() {
+check_ollama_running() {return 0;
     local os=$(detect_os)
     case "$os" in
         "linux"|"mac")

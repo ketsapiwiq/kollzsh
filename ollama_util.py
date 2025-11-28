@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import json
 import logging
 import os
@@ -41,13 +40,14 @@ def get_shell_command_tool(commands: list[str]) -> dict:
 
 def interact_with_ollama(user_query):
     """Interact with the Ollama server and retrieve command suggestions."""
-    client = Client(host=os.environ["KOLLZSH_URL"])
+    client = Client(host=os.environ["KOLLZSH_URL"],     headers={'Authorization': 'Bearer ' + os.environ.get('OPENAI_API_KEY')})
     log_debug("Sending query to Ollama:", user_query)
 
     # Format the user query to focus on shell commands
     formatted_query = (
         f"Generate shell commands for the following task: {user_query}. \n"
         "Provide multiple relevant commands if available. \n"
+        "OS setting is Arch Linux + KDE"
         "Output in JSON format with markdown-wrapped JSON. \n"
         "The JSON needs to include a key named 'commands' with a list of commands. \n"
     )
@@ -55,7 +55,7 @@ def interact_with_ollama(user_query):
     try:
         response = client.chat(
             model=os.environ["KOLLZSH_MODEL"],
-            keep_alive=os.environ["KOLLZSH_KEEP_ALIVE"],
+            #keep_alive=os.environ["KOLLZSH_KEEP_ALIVE"],
             messages=[{"role": "user", "content": formatted_query}],
             stream=False,
             tools=[get_shell_command_tool],
