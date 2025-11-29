@@ -1,11 +1,11 @@
 # default shortcut as Ctrl-o
 (( ! ${+KOLLZSH_HOTKEY} )) && typeset -g KOLLZSH_HOTKEY='^o'
 # default ollama model as qwen2.5-coder:3b
-(( ! ${+KOLLZSH_MODEL} )) && typeset -g KOLLZSH_MODEL='qwen2.5-coder:3b'
+(( ! ${+KOLLZSH_MODEL} )) && typeset -g KOLLZSH_MODEL='z-ai/glm-4.6'
 # default response number as 5
 (( ! ${+KOLLZSH_COMMAND_COUNT} )) && typeset -g KOLLZSH_COMMAND_COUNT='5'
 # default ollama server host
-(( ! ${+KOLLZSH_URL} )) && typeset -g KOLLZSH_URL='http://localhost:11434'
+(( ! ${+KOLLZSH_URL} )) && typeset -g KOLLZSH_URL='https://nano-gpt.com/api/v1/'
 # default ollama time to keep the server alive
 (( ! ${+KOLLZSH_KEEP_ALIVE} )) && typeset -g KOLLZSH_KEEP_ALIVE='1h'
 # default python3 path
@@ -78,15 +78,15 @@ fzf_kollzsh() {
   
   # Try uvx first, then pipx, then system python
   if command -v uvx &> /dev/null; then
-    KOLLZSH_COMMANDS=$( "uvx" "--with" "ollama" "python" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+    KOLLZSH_COMMANDS=$( "uvx" "--with" "openai" "python" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY" 2>&1)
   elif command -v pipx &> /dev/null; then
-    KOLLZSH_COMMANDS=$( "pipx" "run" "--with" "ollama" "python" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+    KOLLZSH_COMMANDS=$( "pipx" "run" "--with" "openai" "python" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY" 2>&1)
   elif command -v python3 &> /dev/null; then
-    # Check if ollama module is available
-    if python3 -c "import ollama" 2>/dev/null; then
-      KOLLZSH_COMMANDS=$( "python3" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY")
+    # Check if openai module is available
+    if python3 -c "import openai" 2>/dev/null; then
+      KOLLZSH_COMMANDS=$( "python3" "$PLUGIN_DIR/ollama_util.py" "$KOLLZSH_USER_QUERY" 2>&1)
     else
-      echo "🚨 ollama module not found! Install it with: pip install ollama"
+      echo "🚨 openai module not found! Install it with: pip install openai"
       return 0
     fi
   else
