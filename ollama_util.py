@@ -62,27 +62,31 @@ def interact_with_ollama(user_query):
             model=os.environ["KOLLZSH_MODEL"],
             messages=[{"role": "user", "content": formatted_query}],
             stream=False,
-            tools=[get_shell_command_tool],
         )
-        log_debug("Received response from Ollama:", response)
+        log_debug("Received response from OpenAI:", response)
 
-        # Extract tool calls from the response
-        if hasattr(response.message, "tool_calls") and response.message.tool_calls:
-            for tool_call in response.message.tool_calls:
-                if tool_call.function.name == "get_shell_command_tool":
-                    try:
-                        commands = tool_call.function.arguments.get("commands", [])
-                        if commands:
-                            log_debug("Successfully extracted commands:", commands)
-                            return commands
-                    except AttributeError as e:
-                        log_debug(f"Error accessing tool call arguments: {str(e)}")
+        # Extract content from the response
+        if response.choices and response.choices[0].message.content:
+            content = response.choices[0].message.content
+            # Try to parse JSON from the response
+            try:
+                # Look for JSON in the content
+                json_match = re.search(r"\{.*\}", content, re.DOTALL)
+                if json_match:
+                    json_data = json.loads(json_match.group())
+                    commands = json_data.get("commands", [])
+                else:
+                    # If no JSON found, split by lines and clean up
+                    commands = [
+                        cmd.strip() for cmd in content.split("\n") if cmd.strip()
+                    ]
+            except json.JSONDecodeError:
+                # Fallback to line splitting
+                commands = [cmd.strip() for cmd in content.split("\n") if cmd.strip()]
 
-        # Fallback to parsing content if no tool calls
-        content = response.message.content if hasattr(response.message, "content") else ""
-        if content:
-            log_debug("No tool calls found, falling back to content parsing")
-            return parse_commands(content)
+            if commands:
+                log_debug("Successfully extracted commands:", commands)
+                return commands
 
         log_debug("No valid commands found in response")
         return []
