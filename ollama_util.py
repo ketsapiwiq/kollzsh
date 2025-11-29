@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-from ollama import Client
+from openai import OpenAI
 
 # Configure logging
 LOG_FILE = "/tmp/kollzsh_debug.log"
@@ -19,7 +19,9 @@ logging.basicConfig(
 def log_debug(message, data=None):
     """Log debug message with optional data."""
     if data:
-        logging.debug(f"{message}\nData: {data}\n----------------------------------------")
+        logging.debug(
+            f"{message}\nData: {data}\n----------------------------------------"
+        )
     else:
         logging.debug(message)
 
@@ -39,8 +41,11 @@ def get_shell_command_tool(commands: list[str]) -> dict:
 
 
 def interact_with_ollama(user_query):
-    """Interact with the Ollama server and retrieve command suggestions."""
-    client = Client(host=os.environ["KOLLZSH_URL"],     headers={'Authorization': 'Bearer ' + os.environ.get('OPENAI_API_KEY')})
+    """Interact with the OpenAI-compatible server and retrieve command suggestions."""
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY", "dummy"),
+        base_url=os.environ["KOLLZSH_URL"],
+    )
     log_debug("Sending query to Ollama:", user_query)
 
     # Format the user query to focus on shell commands
@@ -53,9 +58,8 @@ def interact_with_ollama(user_query):
     )
 
     try:
-        response = client.chat(
+        response = client.chat.completions.create(
             model=os.environ["KOLLZSH_MODEL"],
-            #keep_alive=os.environ["KOLLZSH_KEEP_ALIVE"],
             messages=[{"role": "user", "content": formatted_query}],
             stream=False,
             tools=[get_shell_command_tool],
@@ -84,7 +88,7 @@ def interact_with_ollama(user_query):
         return []
 
     except Exception as e:
-        log_debug(f"Error interacting with Ollama: {str(e)}")
+        log_debug(f"Error interacting with OpenAI: {str(e)}")
         return []
 
 
@@ -92,7 +96,9 @@ def parse_commands(content):
     """Parse commands from response content."""
     try:
         # Try to find markdown-wrapped JSON first
-        markdown_match = re.search(r"```(json|bash|zsh)\s*(.*?)\s*```", content, re.DOTALL)
+        markdown_match = re.search(
+            r"```(json|bash|zsh)\s*(.*?)\s*```", content, re.DOTALL
+        )
         if markdown_match:
             content_type = markdown_match.group(1)
             content = markdown_match.group(2)
